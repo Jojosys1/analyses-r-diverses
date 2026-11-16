@@ -1,0 +1,680 @@
+```{r}
+library(urca)
+library(vars)
+library(survival)
+library(tseries)
+library(imf.data)
+library(forecast)
+library(lmtest)
+library(TSA)
+
+
+```
+
+| Variables          | Col2 | Col3 |
+|--------------------|------|------|
+| inf (inflation)    |      |      |
+| e (consommation),  |      |      |
+| prod (production), |      |      |
+| U (chômage),       |      |      |
+
+## CHARGEMENT ET VISUALISATION DES DONNEES
+
+```{r}
+#chargement
+canada=data(Canada)
+#Visualisation
+#View(Canada)
+plot(Canada)
+#Analyse exploratoire
+summary(Canada)
+
+class(Canada)
+
+```
+
+Verifions la stationnarité
+
+```{r}
+  adf.test(Canada[,"e"])
+  adf.test(Canada[,"prod"])
+  
+  
+  pp.test(Canada[,"e"])
+  pp.test(Canada[,"prod"])
+```
+
+Interpreation
+
+on constate la non stationnarité des séries temporelles prod et e
+
+### Solution
+
+Differencier
+
+```{r}
+
+
+
+diff_prod=diff(Canada[,"prod"],differences = 2)
+adf.test(diff_prod)
+pp.test(diff_prod)
+ndiffs(Canada[,"prod"])
+#La differenciation d'ordre 1 n'est pas fonctionnelle pour la variable prod
+diff_e=diff(Canada[,"e"],differences = 2)
+adf.test(diff_e)
+pp.test(diff_e)
+
+#La differenciation d'ordre 1 n'est pas fonctionnelle pour al variable e
+```
+
+## Conclusion
+
+e et prod\~CI(2,2)
+
+## Modèle dynamique simple : dyn_model \<- lm(e \~ lag(e,-1) + prod, data=Canada)
+
+Nous avons reussi a s
+
+```{r}
+#Conversion en ts
+canada=ts(Canada)
+
+#class(canada)
+
+dyn_model <- lm(diff_e ~ diff_prod, data=Canada) 
+
+res=residuals(dyn_model)
+pp.test(res)
+#adf.test(res)
+
+summary(dyn_model)
+
+checkresiduals(dyn_model)
+```
+
+D'apès les test de dickey fuller de phillipes peron les residues issus du modèle a long terme sont non stationnaire
+
+### Solution:Modéle de correction d'erreur
+
+```{r}
+dyn_model1 <- lm(e ~  prod, data=Canada) 
+summary(dyn_model1)
+
+res=residuals(dyn_model1)
+
+
+
+adf.test(diff(res))
+```
+
+Interpretation
+
+lA pvalue etant presque conforme 5 % a un ordre plus eleve comme 10% on valide cette pvalue.....travaillons avec cela
+
+on a donc une cointégration donc on peut passer au MCE
+
+## 3. Résumé : summary(dyn_model)
+
+La je dois definie un MCE normalement pour une cointtégration CI(2,2)
+
+```{r}
+  a=lm(e ~ lag(e,-1) + prod, data=Canada)
+summary(a) 
+
+```
+
+## 
+
+# PARTIE III — Modèle ARDL
+
+------------------------------------------------------------------------
+
+```{r}
+rm(list=ls()) #Removes all items in Environment!
+library(tseries) # for ADF unit root tests
+library(dynlm)
+library(lmtest) #for `coeftest()` and `bptest()`.
+library(broom) #for `glance(`) and `tidy()`
+library(car) #for `hccm()` robust standard errors
+library(sandwich)
+library(knitr) #for kable()
+library(nlWaldTest)
+library(PoEdata) #for PoE4 datasets
+
+```
+
+```{r}
+#install.packages("remotes")
+#remotes::install_github("ccolonescu/PoEdata")
+data("usa", package="PoEdata")
+View(usa)
+```
+
++-----------+----------------------------------------------------------------------+
+| variables | Description                                                          |
+|           |                                                                      |
+|           | USA:A data frame with 104 observations on the following 4 variables. |
++===========+======================================================================+
+| gdp       | real US gross domestic product                                       |
++-----------+----------------------------------------------------------------------+
+| inf       | annual inflation rate                                                |
++-----------+----------------------------------------------------------------------+
+| f         | Federal Funds rate                                                   |
++-----------+----------------------------------------------------------------------+
+| b         | 3-year Bond rate                                                     |
++-----------+----------------------------------------------------------------------+
+
+```{r}
+plot(usa[,"inf"])
+plot(usa[,"b"])
+plot(usa[,"f"])
+plot(usa[,"gdp"])
+
+usa.ts <- ts(usa, start=c(1984,1), end=c(2009,4),
+               frequency=4)
+summary(usa.ts)
+
+```
+
+D'apres les graphes observés il y a probablement tendance et saisonnalité
+
+```{r}
+adf.test(usa[,"inf"]) #   Non stationnaire
+pp.test(usa[,"inf"])
+
+adf.test(usa[,"gdp"]) #Non stationnaire
+pp.test(usa[,"gdp"]) 
+
+adf.test(usa[,"b"])  #    stationnaire
+pp.test(usa[,"b"])  #.....
+
+adf.test(usa[,"f"])    # stationnaire
+pp.test(usa[,"f"])   #....
+
+```
+
+### On va differencier pou resoudre le probleme de non stationnarity
+
+```{r}
+
+Dgdp <- diff(usa.ts[,"gdp"])
+Dinf <- diff(usa.ts[,"inf"])
+Df <- diff(usa.ts[,"f"])
+Db <- diff(usa.ts[,"b"])
+
+```
+
+```{r}
+  adf.test(Dinf) #   Non stationnaire
+pp.test(Dinf)
+
+adf.test(Dgdp) #Non stationnaire
+pp.test(Dgdp) 
+
+adf.test(Db)  #    stationnaire
+  pp.test(Db)  #.....
+
+adf.test(Df)    # stationnaire
+pp.test(Df)   #....
+```
+
+### Definition de l'union
+
+```{r}
+usa.ts.df <- ts.union(gdp=usa.ts[,1], # package tseries
+                      inf=usa.ts[,2], 
+                      f=usa.ts[,3],
+                      b=usa.ts[,4],
+                      Dgdp,Dinf,Df,Db,
+                      dframe=TRUE)
+```
+
+```{r}
+
+par(mfrow=c(2,2))
+plot(usa.ts.df$gdp)
+plot(usa.ts.df$Dgdp)
+par(mfrow=c(2,2))
+plot(usa.ts.df$inf)
+plot(usa.ts.df$Dinf)
+par(mfrow=c(2,2))
+plot(usa.ts.df$f)
+plot(usa.ts.df$Df)
+par(mfrow=c(2,2))
+plot(usa.ts.df$b)
+plot(usa.ts.df$Db)
+
+```
+
+```{r}
+kable(head(usa.ts.df), 
+caption="Time series data frame constructed with 'ts.union'")
+```
+
+## **AR(1), le modèle autorégressif du premier ordre**
+
+```{r}
+N <- 500
+a <- 1
+l <- 0.01
+rho <- 0.7
+
+set.seed(246810)
+v <- ts(rnorm(N,0,1))
+
+y <- ts(rep(0,N))
+for (t in 2:N){
+  y[t]<- rho*y[t-1]+v[t]
+}
+plot(y,type='l', ylab="rho*y[t-1]+v[t]")
+abline(h=0)
+
+y <- ts(rep(0,N))
+for (t in 2:N){
+  y[t]<- a+rho*y[t-1]+v[t]
+}
+plot(y,type='l', ylab="a+rho*y[t-1]+v[t]")
+abline(h=0)
+
+y <- ts(rep(0,N))
+for (t in 2:N){
+  y[t]<- a+l*time(y)[t]+rho*y[t-1]+v[t]
+}
+plot(y,type='l', ylab="a+l*time(y)[t]+rho*y[t-1]+v[t]")
+abline(h=0)
+
+y <- ts(rep(0,N))
+for (t in 2:N){
+  y[t]<- y[t-1]+v[t]
+}
+plot(y,type='l', ylab="y[t-1]+v[t]")
+abline(h=0)
+
+a <- 0.1
+y <- ts(rep(0,N))
+for (t in 2:N){
+  y[t]<- a+y[t-1]+v[t]
+}
+plot(y,type='l', ylab="a+y[t-1]+v[t]")
+abline(h=0)
+
+y <- ts(rep(0,N))
+for (t in 2:N){
+  y[t]<- a+l*time(y)[t]+y[t-1]+v[t]
+}
+plot(y,type='l', ylab="a+l*time(y)[t]+y[t-1]+v[t]")
+abline(h=0)
+```
+
+## **3- Régression spurieuse**
+
+La non-stationarité peut conduire à **une régression fallacieuse**, une relation apparente entre des variables qui, en réalité, ne sont pas liées. La séquence de codes suivante génère deux processus de marche aléatoire indépendants, y et x, et régresse y sur x.
+
+```{r}
+T <- 1000
+set.seed(1357)
+y <- ts(rep(0,T))
+vy <- ts(rnorm(T))
+for (t in 2:T){
+  y[t] <- y[t-1]+vy[t]
+}
+
+set.seed(4365)
+x <- ts(rep(0,T))
+vx <- ts(rnorm(T))
+for (t in 2:T){
+  x[t] <- x[t-1]+vx[t]
+}
+y <- ts(y[300:1000])
+x <- ts(x[300:1000])
+ts.plot(y,x, ylab="y and x")
+```
+
+```{r}
+
+spurious.ols <- lm(y~x)
+summary(spurious.ols)
+```
+
+```{r}
+plot(x, y, type="p", col="grey")
+```
+
+## **Tests racines unitaires pour la stationnerie**
+
+avec un plot de l'acf on peut choisir le K du test de dickey fuller pour utiliser l'option avancé
+
+```{r}
+plot(usa.ts.df$f)
+Acf(usa.ts.df$f)
+```
+
+**dynlm**:Dynamic Linear Models and Time Series Regression
+
+Interface to [`lm.wfit`](http://127.0.0.1:33906/help/library/dynlm/help/lm.wfit) for fitting dynamic linear models and time series regression relationships.
+
+```{r}
+
+adf.test(usa.ts.df$f, k=10)
+plot(usa.ts.df$b)
+Acf(usa.ts.df$b)
+
+
+
+f <- usa.ts.df$f
+f.dyn <- dynlm(d(f)~L(f)+L(d(f)))
+summary(f.dyn)
+
+
+
+b <- usa.ts.df$b
+b.dyn <- dynlm(d(b)~L(b)+L(d(b)))
+summary(b.dyn )
+
+
+df <- diff(usa.ts.df$f)
+plot(df)
+Acf(df)
+adf.test(df, k=2)
+
+
+db <- diff(usa.ts.df$b)
+plot(db)
+Acf(db)
+adf.test(db, k=1)
+```
+
+```{r}
+df.dyn <- dynlm(d(df)~L(df)-1)
+db.dyn <- dynlm(d(db)~L(db)-1)
+tidy(df.dyn)
+
+```
+
+### Ordre de differenciation
+
+```{r}
+ndiffs(f)
+ndiffs(b)
+```
+
+### Integration
+
+```{r}
+
+fb.dyn <- dynlm(b~f) # long terme
+summary(fb.dyn)
+ehat.fb <- resid(fb.dyn)
+ndiffs(ehat.fb) 
+
+
+model_ct=dynlm(d(b)~L(ehat.fb)+d(f)) # court terme
+summary(model_ct)
+checkresiduals(model_ct)
+
+
+```
+
+```{r}
+output <- dynlm(d(ehat.fb)~L(ehat.fb)+L(d(ehat.fb))-1) #no constant
+foo <- summary(output)
+foo
+```
+
+### tests de cointégration
+
+```{r}
+bfx <- as.matrix(cbind(b,f), demean=FALSE)
+po.test(bfx)
+```
+
+```{r}
+library(ARDL)
+a=auto_ardl(b~f+inf,data=usa.ts.df,max=c(2,3,2))
+summary(a$best_model)
+checkresiduals(a$best_model)
+```
+
+## **5 Le modèle de correction d’erreurs**
+
+```{r}
+b.ols <- dynlm(L(b)~L(f))
+b1ini <- coef(b.ols)[[1]]
+b2ini <- coef(b.ols)[[2]]
+d.ols <- dynlm(b~L(b)+f+L(f))
+aini <- 1-coef(d.ols)[[2]]
+d0ini <- coef(d.ols)[[3]]
+d1ini <- coef(d.ols)[[4]]
+Db <- diff(b)
+Df <- diff(f)
+Lb <- lag(b,-1)
+Lf <- lag(f,-1)
+LDf <- lag(diff(f),-1)
+bfset <- data.frame(ts.union(cbind(b,f,Lb,Lf,Db,Df,LDf)))
+formula <- Db ~ -a*(Lb-b1-b2*Lf)+d0*Df+d1*LDf
+bf.nls <- nls(formula, na.action=na.omit, data=bfset,
+          start=list(a=aini, b1=b1ini, b2=b2ini, 
+                     d0=d0ini, d1=d1ini))
+kable(tidy(bf.nls), 
+caption="Parameter estimates in the error correction model")
+```
+
+```{r}
+
+```
+
+```{r}
+ VARselect(Canada[,c('e','prod')], lag.max=8, type='const') 
+
+```
+
+```{r}
+library(ARDL)
+
+model_ardl <- ardl(e ~ prod, data = Canada, order = c(e = 2, prod = 2))
+summary(model_ardl)
+```
+
+```{r}
+ bounds_f_test(model_ardl)
+```
+
+# PARTIE IV — Modèle VAR
+
+------------------------------------------------------------------------
+
+1\. Différenciation :
+
+```{r}
+ diffCanada <- diff(Canada) 
+```
+
+2Sélection du lag :
+
+```{r}
+  VARselect(diffCanada, lag.max=10, type='const') 
+
+```
+
+3\. Estimation VAR
+
+```{r}
+lag_selection=2
+model_var <- VAR(diffCanada, p=lag_selection)
+```
+
+4\. Réponses impulsionnelles
+
+```{r}
+irf(model_var) 
+```
+
+5.  Décomposition variance :
+
+```{r}
+ fevd(model_var) 
+
+```
+
+# PARTIE V — Modèle VECM
+
+------------------------------------------------------------------------
+
+1\. Test de co-intégration Johansen :
+
+```{r}
+ ca.jo(Canada, type='trace', ecdet='const', K=2) 
+```
+
+2\. Estimation VECM
+
+```{r}
+model_vecm <- tsDyn::VECM(Canada, lag=2, r=1, estim='ML') 
+summary(model_vecm)
+```
+
+### PARTIE VI — Modèles de durée (Survie)
+
+```{r}
+library(survival)
+library(KMsurv)
+lung=data(cancer, package="survival")
+ lung=cancer
+ length(cancer[,"time"])
+ 
+ class(lung[,"time"])
+ 
+ 
+#time=sort(lung[,"time"])
+#status=sort(lung[,"status"])
+sex=lung[,"sex"]
+ time=lung[,"time"]
+ status=lung[,"status"]
+ 
+ surv_obj <- Surv(lung[,"time"],lung[,"status"]) 
+ 
+ fit_km <- survfit(surv_obj ~ 1) 
+
+
+ head(lung)
+ summary(lung)
+ plot(survfit(Surv(time,status)~1))
+ 
+ 
+ 
+ #1. Analyse exploratoire : head(lung), summary(lung), plot(survfit(Surv(time,status)~1))
+ 
+```
+
+```{r}
+model_1= survfit(Surv(time,status)~sex)
+ 
+ model_2=survdiff(Surv(time,status)~sex)
+ 
+ summary(model_1)
+ summary(model_2)
+```
+
+```{r}
+
+
+ cox_model <- coxph(Surv(time,status)~age+sex+ph.ecog, data=lung) 
+ 
+exp(coef(cox_model)) #pour hazard ratios 
+```
+
+```{r}
+cox.zph(cox_model)
+
+
+survreg(Surv(time,status)~age+sex+ph.ecog, dist='weibull',data=lung)
+```
+
+## PARTIE III — Modèle ARDL
+
+---
+Données : Canada (package vars) 
+Sélection des lags : VARselect(Canada[,c('e','prod')], lag.max=8, type='const') 
+Estimation ARDL : model_ardl <- ardl::ardlDlm(e ~ prod, data=Canada, lags=list(e=2, 
+prod=2)) 
+Test co-intégration : ardl::bounds_f_test(model_ardl)
+---
+
+```{r}
+library(ARDL)
+
+library(vars)
+
+```
+
+```{r}
+data("Canada")
+plot(Canada)
+```
+
+```{r}
+#Analyse exploratoire
+summary(Canada)
+
+class(Canada)
+
+
+
+ adf.test(Canada[,"e"])
+  adf.test(Canada[,"prod"])
+  
+  
+  pp.test(Canada[,"e"])
+  pp.test(Canada[,"prod"])
+  
+  
+  
+diff_prod=diff(Canada[,"prod"],differences = 2)
+adf.test(diff_prod)
+pp.test(diff_prod)
+ndiffs(Canada[,"prod"])
+#La differenciation d'ordre 1 n'est pas fonctionnelle pour la variable prod
+diff_e=diff(Canada[,"e"],differences = 2)
+adf.test(diff_e)
+pp.test(diff_e)
+
+#La differenciation d'ordre 1 n'est pas fonctionnelle pour al variable e
+```
+
+```{r}
+lag=VARselect(Canada[,c('e','prod')], lag.max=8, type='const')
+lag
+```
+
+## Conclusion
+
+e et prod\~CI(2,2)
+
+## ardl_model \<- ardl(diff_e \~ prod, data=Canada,lags=list(e=2,prod=2))
+
+Nous avons reussi a s
+
+```{r}
+#Conversion en ts
+canada=ts(Canada)
+
+#class(canada)
+
+ardl_model <- ardl(e ~ prod, data=Canada,order=cbind(e=2,prod=2))
+
+res=residuals(ardl_model)
+pp.test(res)
+adf.test(res)
+
+summary(ardl_model)
+
+checkresiduals(ardl_model)
+```
+
+Test co-intégration
+
+```{r}
+
+bounds_f_test(model_ardl,case = 2) 
+```

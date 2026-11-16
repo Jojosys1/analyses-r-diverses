@@ -1,0 +1,142 @@
+1-Definir un modèle d'anova
+
+```{r}
+#ANOVA
+data(npk)
+str(npk)
+
+data(chickwts)
+str(chickwts)
+View(chickwts)
+# Charger les données
+data("sleep")
+data("stress")
+#View(stress)
+
+# Voir les premières lignes
+
+# Vérifier la structure
+
+
+
+
+str(stress)
+score=stress$score
+exercise=stress$exercise
+```
+
+```{r}
+library(datarium)
+data("PlantGrowth")
+View(PlantGrowth)
+data("stress")
+View("datarium")
+```
+
+2-Présentation de la base de données
+
+-   `weight` : variable continue (poids des plantes)
+
+<!-- -->
+
+-   `group` : facteur à trois niveaux (`ctrl`, `trt1`, `trt2`)
+
+\-
+
+3-Visualidation des données
+
+```{r}
+
+weight=PlantGrowth$weight
+group=PlantGrowth$group
+
+weight1=chickwts$weight
+feed=chickwts$feed
+
+plot(feed, weight1,
+     pch = 19,            # points pleins
+     col = "green",
+     xlab = "Group",
+     ylab = "Weight",
+     main = "PlantGrowth")
+
+# Calculer la moyenne par groupe
+means <- aggregate(weight ~ feed, data = chickwts, FUN = mean)
+
+# Plot ggplot
+ggplot(chickwts, aes(x = feed, y = weight, color = feed)) +
+  geom_boxplot(alpha = 0.5, outlier.shape = NA) +   # Boîtes semi-transparentes, sans outliers visibles
+  geom_jitter(width = 0.2, size = 2, alpha = 0.7) + # Points individuels
+  geom_point(data = means, aes(x = feed, y = weight), 
+             color = "red", size = 3) +            # Moyenne par groupe
+  geom_line(data = means, aes(x = feed, y = weight, group = 1), 
+            color = "red", size = 1) +             # Ligne reliant les moyennes
+  labs(title = "Boxplot avec moyennes par groupe",
+       x = "Feed Type",
+       y = "Weight") +
+  theme_minimal() +
+  theme(legend.position = "none")        
+```
+
+4-Modele
+
+```{r}
+#Ici nous allons définir le modèle d'anova 1
+
+model=aov(weight~group,data=PlantGrowth)
+model=aov(weight1~feed,data=chickwts)
+#model
+summary(model)
+#anova.lm(model)
+
+
+```
+
+6-AOV et obtention du tableau
+
+```{r}
+anova(model)
+```
+
+7-Code avec LM
+
+```{r}
+model2=lm(weight1~feed)
+model2
+summary(model2)
+```
+
+### **Test de validations**
+
+8-Homogénéité
+
+```{r}
+bartlett.test(weight1 ~ feed, data = PlantGrowth)
+```
+
+9--Normalité
+
+Shapiro wilk
+
+```{r}
+shapiro.test(weight1)
+shapiro.test(residuals(model))
+```
+
+10-Test de tukey
+
+permet de comparer deux a deux les variances ou moyennes des facteurs
+
+```{r}
+TukeyHSD(model)
+```
+
+12-Comparaison multiple
+
+```{r}
+anova(model,test="Wilks",data=chickwts )
+```
+
+la fonction relevel :permet de choisir la reference...souvent ce sont les valeurs a l'extreminite
+
+min—max....on va comparer au min par exemple ou la mediane ou moyenne pour travailler

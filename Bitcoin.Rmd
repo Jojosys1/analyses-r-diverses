@@ -1,0 +1,311 @@
+```{r}
+library(TSA)
+#install.packages("tseries")
+library(tseries)
+#install.packages("lmtest")
+library(lmtest)
+#install.packages("FitAR")
+#install.packages("forecast")
+library(forecast)
+library(fastcpd)
+
+```
+
+```{r}
+#données
+data("bitcoin2019")
+data("AirPassengers")
+
+```
+
+```{r}
+# decoupper le jeu e=e=de données
+data("bitcoin")
+bitcoin1<- bitcoin[bitcoin$date >= "2019-01-01", ]
+#bitcoin2019=bitcoin1[bitcoin$date <= "2022-01-01", ]
+bitcoin2019=bitcoin1
+
+bitcoin_val=bitcoin[bitcoin$date > "2022-01-01", ]
+
+plot(bitcoin2019)
+
+```
+
+Analyse exploratoire de la base de donnéees
+
+```{r}
+
+library(tseries)
+data <- ts(bitcoin2019$price,c(2019,1),frequency = 91)
+head(data)
+
+summary(data)
+#dec=decompose(data)
+
+class(data)
+plot(data)
+```
+
+![](images/clipboard-9133593.png)
+
+Tests
+
+```{r}
+
+
+lag_bitcoin=zlag(data)
+plot(data,lag_bitcoin)
+
+
+adf.test(data)
+
+pacf(data)
+acf(data)
+```
+
+Différenciation
+
+```{r}
+
+diff_bit <- diff(data)
+plot(diff(data),
+     col="red",
+     main="Serie differenciee",
+     ylab="Valeur",
+     xlab="Temps",
+     lwd=2)
+data_diff=diff_bit
+adf.test(data_diff)
+```
+
+```{r}
+
+
+
+
+#summary(modele)
+
+plot(data_diff,zlag(data_diff))
+
+acf(data_diff)
+pacf(data_diff)
+
+```
+
+```{r}
+modele <- auto.arima(data_diff)
+modele
+
+forecast(modele)
+```
+
+```{r}
+res.model=residuals(modele)
+plot(modele)
+plot(res.model)
+par(mfrow=c(3,2))
+  plot(res.model,type='o',ylab='Standardised residuals', main="Time series plot of standardised residuals")
+  abline(h=0)
+  hist(res.model,main="Histogram of standardised residuals")
+  qqnorm(res.model,main="QQ plot of standardised residuals")
+  qqline(res.model, col = 2)
+  acf(res.model,main="ACF of standardised residuals")
+  print(shapiro.test(res.model))
+  k=0
+  #LBQPlot(res.model, lag.max = 30, StartLag = k + 1, k = 0, SquaredQ = FALSE)
+  #par(mfrow=c(1,1))
+```
+
+```{r}
+# Forecasting
+
+modele2 <- arima(data,c(1,1,1))
+
+
+
+preds1 = forecast(modele, h = 2)
+head(preds1)
+
+#summary(preds1)
+plot(preds1,
+     main = " Forecast for the next 24 months of the time series",
+     xlab = "date",
+     ylab = "price")
+
+plot(preds2)
+```
+
+```{r}
+# Forecasting
+
+modele2 <- auto.arima(data_diff)
+modele2
+
+preds2 = forecast(modele2, h = 24)
+plot(preds1,
+     main = " Forecast for the next 24 months of the time series",
+     xlab = "Year",
+     ylab = "Number of Passengers")
+
+```
+
+```{r}
+
+# modèle ARIMA automatique
+modele2 <- arima(data_diff,c(2,1,1))
+modele2
+
+
+```
+
+```{r}
+# Forecasting
+
+library(forcats)
+
+summary(modele3)
+
+preds3 = forecast(modele3, h = 12)
+plot(preds3,
+     main = " Forecast for the next 24 months of the time series",
+     xlab = "Year",
+     ylab = "Number of Passengers")
+#ggplot(bitcoin_val)
+#lines(as.vector(bitcoin_val),type="o")
+```
+
+```{r}
+mcrow=c(2,2)
+Acf(data)
+acf(data)
+
+pacf(data)
+Pacf(data)
+```
+
+```{r}
+predict(modele, n.ahead=2)
+
+```
+
+3-pour eveluer le rendement
+
+```{r}
+#pour eveluer le rendement
+x=data
+
+r4 <- diff(log(x))   # même résultat
+plot(r4)
+
+
+
+```
+
+```{r}
+
+model_verification=checkresiduals(modele)
+
+```
+
+```{r}
+x=data
+h     <- 12   # horizon = 24 mois (2 ans)
+#alpha <- 0.2479595#0.3
+#beta  <-0.03453373# 0.1
+#gamma <- 1#0.4
+
+ 
+
+
+
+
+modele_auto <- auto.arima(x)
+summary(modele_auto)      
+pred_auto   <- forecast(modele_auto, h = h)
+
+plot(pred_auto,
+     main = "auto.arima — prédiction avec intervalles de confiance",
+     col  = "gray40", xlab = "Temps", ylab = "Passagers")
+
+
+
+HoltWinters(x, alpha = alpha, beta, gamma )
+
+lisse_ses  <- HoltWinters(x, alpha = alpha,
+                          beta  = FALSE,
+                          gamma = FALSE)
+
+
+lisse_holt <- HoltWinters(x, alpha = alpha,
+                          beta  = beta,
+                          gamma = FALSE)
+
+lisse_add  <- HoltWinters(x, alpha = alpha,
+                          beta  = beta,
+                          gamma = gamma,
+                          seasonal = "additive")
+
+
+lisse_mul  <- HoltWinters(x, alpha = alpha,
+                          beta  = beta,
+                          gamma = gamma,
+                          seasonal = "multiplicative")
+
+
+
+
+par(mfrow = c(2, 2))
+plot(lisse_ses,
+     main = paste0("SES  (α = ", alpha, ")"),
+     col  = c("gray40", "steelblue"),
+     xlab = "Temps", ylab = "Passagers")
+
+plot(lisse_holt,
+     main = paste0("Holt  (α=", alpha, ", β=", beta, ")"),
+     col  = c("gray40","darkorange"),
+     xlab = "Temps", ylab = "Passagers")
+plot(lisse_add,
+     main = paste0("HW Additif  (γ=", gamma, ")"),
+     col  = c("gray40","darkgreen"),
+     xlab = "Temps", ylab = "Passagers")
+
+plot(lisse_mul,
+     main = paste0("HW Multiplicatif  (γ=", gamma, ")"),
+     col  = c("gray40","purple"),
+     xlab = "Temps", ylab = "Passagers")
+par(mfrow = c(1, 1))
+
+
+
+
+
+
+pred_ses   <- predict(lisse_ses, n.ahead = h)
+plot(pred_ses)
+pred_holt  <- predict(lisse_holt, n.ahead = h)
+plot(pred_holt)
+pred_add   <- predict(lisse_add, n.ahead = h)
+plot(pred_add)
+pred_mul   <- predict(lisse_mul, n.ahead = h)
+pred(pred_mul)
+plot(x,
+     xlim = c(1949, 1963), ylim = c(100, 800),
+     main = "Comparaison des prédictions ",
+     col  = "gray40", lwd = 1.5,
+     xlab = "Année", ylab = "Passagers (milliers)")
+
+lines(pred_ses,       col = "steelblue",  lty = 2, lwd = 1.6)
+lines(pred_holt,      col = "darkorange", lty = 2, lwd = 1.6)
+lines(pred_add,       col = "darkgreen",  lty = 2, lwd = 1.6)
+lines(pred_mul,       col = "purple",     lty = 2, lwd = 1.6)
+lines(pred_auto$mean, col = "red",        lty = 1, lwd = 2.0)
+
+legend("topleft",
+       legend = c("Observé","SES","Holt",
+                  "HW additif","HW multiplicatif","auto.arima"),
+       col    = c("gray40","steelblue","darkorange",
+                  "darkgreen","purple","red"),
+       lty    = c(1,2,2,2,2,1),
+       lwd    = c(1.5,1.6,1.6,1.6,1.6,2.0),
+       bty    = "n", cex = 0.8)
+```

@@ -1,0 +1,329 @@
+```{r}
+data <- read.delim("clipboard", header = TRUE) # importe les données grace qu clipboard
+```
+
+```{r}
+#data=ts(data,start=1,end=20)
+data1=ts(data,start=c(2021,1),end=c(2025,4),frequency = 4) #fonction ts 
+data1
+
+
+```
+
+```{r}
+dec=decompose(data1) #fonc
+dec
+```
+
+```{r}
+plot(data1)
+```
+
+```{r}
+plot(dec)
+```
+
+<div>
+
+#Test de Dickey fuller
+
+</div>
+
+```{r}
+
+library(urca)
+test <- ur.df(data1, type="trend", selectlags="AIC")
+summary(test)
+```
+
+```{r}
+#test de stationnarit"
+#adf.test
+#kpss.test
+
+PP.test(data1)
+```
+
+```{r}
+#acf(data)
+b=dec$trend[3:18]
+
+pacf(b)
+
+
+acf(b)
+
+```
+
+```{r}
+library(tseries)
+adf.test(data1)
+```
+
+```{r}
+library(WDI)
+# PIB de la France de 1960 à 2024
+gdp_data <- WDI(indicator='NY.GDP.MKTP.CD', country='FR', start=1960, end=2024)
+class(gdp_data)
+View(gdp_data)
+```
+
+```{r}
+library(imf.data)
+data("imf.data")
+(imf.data)
+Air=data(AirPassengers)
+class(Air)
+data1=ts(Air,start=c(2021,1),end=c(2025,4),frequency = 4) #fonction ts 
+data1
+plot(AirPassengers)
+
+dec=decompose(data1) #fonc
+
+
+```
+
+## ARIMA(p,d,q)
+
+```{r}
+#Databases to work with ts-ARIMA
+data(nottem)
+plot(nottem)
+
+
+
+data(AirPassengers)
+AP <- AirPassengers
+#plot(AP)
+
+
+data(EuStockMarkets)
+#plot(EuStockMarkets)
+
+data(UKgas)
+#plot(UKgas)
+
+
+
+
+nottem1=ts(nottem,start=c(1920,1),end=c(1940,12),frequency = 12) #fonction ts 
+class(nottem1)
+
+
+ AirPassengers1=ts( AirPassengers,start=c(2021,1),end=c(2025,4),frequency = 4) #fonction ts 
+ 
+ 
+
+```
+
+### 2-Décomposition pour capter la tendance et la saisonnalite probalble
+
+```{r}
+dec_nottem1=decompose(nottem1) #fonc
+dec_nottem1
+```
+
+### 3-Realiser le test de duckey fuller
+
+```{r}
+library(urca)
+test_nottem <- ur.df(nottem1, type="trend", selectlags="AIC")
+summary(test_nottem)
+
+
+adf.test(nottem1)
+
+
+
+```
+
+```{base avancé}
+data(ausbeer)
+data(ausair)
+data(elecequip)
+plot(ausbeer)
+```
+
+### 4-test de la differenciation
+
+```{r}
+diff_nottem <- diff(nottem1)
+plot(diff(nottem1),
+     col="red",
+     main="Serie differenciee",
+     ylab="Valeur",
+     xlab="Temps",
+     lwd=2)
+adf.test(diff_nottem)
+```
+
+### 5-test de l'acf et pacf
+
+```{r}
+acf(diff_nottem)
+
+pacf(diff_nottem)
+```
+
+### 7-Estimation du modèle
+
+```{r}
+p=5
+d=1
+q=1
+#model <- auto.arima(nottem, order=c(p,d,q))
+
+model
+
+
+
+```
+
+```{r}
+tsdiag(model)
+#checkresiduals(model)
+```
+
+## ARIMA WORK CLASS
+
+```{r}
+library(fastcpd)
+data("bitcoin")
+bitcoin2019 <- bitcoin[bitcoin$date >= "2019-01-01", ]
+plot(bitcoin2019)
+```
+
+```{r}
+
+```
+
+### NB:Test de ruptures structurelles publié dans Int J of Agn and stat sciences IJ ASS 2020 Johnson
+
+# AIR_PASSENGER
+
+```{r}
+data("AirPassengers")
+plot(AirPassengers)
+
+#Affichons quelques valeurs du dataset
+head(AirPassengers)
+
+
+#Plor=ting du jeu de données
+y <- as.numeric(AirPassengers)
+t <- 1:length(AirPassengers)
+plot(t,y)
+#Statistiques descriptive
+summary(AirPassengers)
+
+
+
+```
+
+`Des graphes ont peut observer la présence d'une tendance et d'une saisonnalité`
+
+```{r}
+#Régression lineaire
+
+Airlm=lm(y~t)
+summary(Airlm)
+plot(Airlm)
+```
+
+```{r}
+
+library(TSA)
+library(tseries)
+library(lmtest)
+#install.packages("FitAR")
+#library(FitAR)
+library(forecast)
+```
+
+```{r}
+class(AirPassengers)
+
+decompose(AirPassengers)
+
+
+```
+
+Test de dickey fuller
+
+```{r}
+library(urca)
+test_nottem <- ur.df(AirPassengers, type="trend", selectlags="AIC")
+summary(test_nottem)
+
+adf.test(AirPassengers)
+
+```
+
+```{r}
+#Test de corrélation
+cor(y,t)
+```
+
+```{r}
+plot(t,y,type='o',ylab='AirLine Passengers',col="blue", main = "Time series plot for Airline Passengers ")
+
+abline(Airlm,col="red")
+
+```
+
+# Modele quradratique pour la trend
+
+$µt=β0+β1.t+β2.t^2$
+
+```{r}
+t2=t^2
+Airlm2=lm(y~t+t2,data = AirPassengers)
+summary(Airlm2)
+plot(Airlm2)
+
+
+plot(t,y,type='o',ylab='AirLine Passengers',col="blue", main = "captation squarred ")
+
+abline(Airlm2,col="red")
+
+lines(as.vector(AirPassengers),type="o",col="navyblue")
+
+```
+
+```{r}
+acf(AirPassengers)
+pacf(AirPassengers)
+
+```
+
+```{r}
+model=auto.arima(AirPassengers)
+model
+summary(model)
+
+res_model = residuals(model) 
+plot(res_model,xlab='Time',ylab='Residuals',main="Time series plot of the residuals")
+```
+
+```{r}
+model1 = arima(AirPassengers,order=c(0,0,0),seasonal=list(order=c(0,1,0), period=12))
+
+model2 = arima(log(AirPassengers),order=c(0,0,0),seasonal=list(order=c(0,1,0), period=12))
+
+model3 = arima(log(AirPassengers),order=c(3,2,1),seasonal=list(order=c(0,1,0), period=12))
+
+res_model1 = residuals(model1);  
+res_model2 = residuals(model2);  
+res_model3 = residuals(model3);  
+
+par(mfrow=c(3,1))
+plot(res_model1,xlab='Time',ylab='Residuals',main="Time series plot of the residuals")
+
+plot(res_model2,xlab='Time',ylab='Residuals',main="Time series plot of the residuals")
+
+plot(res_model3,xlab='Time',ylab='Residuals',main="Time series plot of the residuals")
+```
+
+```{r}
+data(WisconsinBreastCancerDatabase)
+```

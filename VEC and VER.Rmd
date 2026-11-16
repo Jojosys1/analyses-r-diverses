@@ -1,0 +1,250 @@
+```{r}
+rm(list=ls()) #Removes all items in Environment!
+library(tseries) # for `adf.test()`
+library(dynlm) #for function `dynlm()`
+library(vars) # for function `VAR()`
+library(nlWaldTest) # for the `nlWaldtest()` function
+library(lmtest) #for `coeftest()` and `bptest()`.
+library(broom) #for `glance(`) and `tidy()`
+library(PoEdata) #for PoE4 datasets
+library(car) #for `hccm()` robust standard errors
+library(sandwich)
+library(knitr) #for `kable()`
+library(forecast) 
+```
+
+### Modèle VEC
+
+### Visualisation des données
+
+```{r}
+
+D=data("gdp", package="PoEdata")
+
+#View(gdp)
+
+gdp <- ts(gdp, start=c(1970,1), end=c(2000,4), frequency=4)
+
+#class(gdp)
+
+ts.plot(gdp[,"usa"],gdp[,"aus"], type="l", 
+        lty=c(1,2), col=c(1,2))
+legend("topleft", border=NULL, legend=c("USA","AUS"), 
+       lty=c(1,2), col=c(1,2))
+```
+
+On observe au niveau des plots a niveau des variables la possible existence d'une tendance nous suggérant ainsi la possible non stationnarité des données
+
+on voit egalement une cointégration possible
+
+### Test de stationnarité
+
+```{r}
+# sur usa
+
+adf.test(gdp[,"usa"])
+```
+
+**R:Non stationnaire**
+
+```{r}
+# sur aus
+
+adf.test(gdp[,"aus"])
+```
+
+**R:Non stationnaire**
+
+#### Nous allons maintenant passer a la différenciation pour atteindre la stationnarité
+
+```{r}
+adf.test(diff(gdp[,"usa"]))
+ndiffs(gdp[,"usa"])
+```
+
+```{r}
+adf.test(diff(gdp[,"aus"]))
+ndiffs(gdp[,"usa"])
+```
+
+**R: Les deux ts en différence 1 sont stationnaire**
+
+**Les conditions pour l'utilisation d'une VAR sur les différences sont reunis ou d'un VECM**
+
+**Pour clarifier la situation nous devons vérifier la cointégration**
+
+```{r}
+#On estime donc le modèle pour récuperer les erreurs pour appliquer un test de stationnarité=test de cointégration
+
+
+# on remarque que la valeur moyenne du y  notre model est negative or nous somme avec le PIB donc on va s'en passer
+
+cint1.dyn <- dynlm(aus~usa-1, data=gdp)
+kable(tidy(cint1.dyn), digits=3,
+  caption="The results of the cointegration equation 'cint1.dyn'")
+
+
+ehat <- resid(cint1.dyn)
+
+
+
+
+summary(cint1.dyn)
+checkresiduals(ehat) # analyse des résidus
+
+adf.test(ehat,k=7)
+pp.test(ehat)
+
+#po.test(cint1.dyn)
+```
+
+```{r}
+#test
+cint3.dyn <- dynlm(usa~aus-1, data=gdp)
+kable(tidy(cint3.dyn), digits=3,
+        caption="The results of the cointegration equation 'cint3.dyn'")
+summary(cint3.dyn)
+```
+
+```{r}
+
+
+ndiffs(ehat)
+
+adf.test(ehat,k=7)
+adf.test(ehat)
+kpss.test(ehat)
+pp.test(ehat)
+po.test(x=cbind(gdp[,"usa"],gdp[,"aus"]))
+```
+
+**R: Le résultat montre que les résidus sont stationnaire il y a de cointegration donc le modèle VAR n'est pas adapté....on construit donc le modèle VEC**
+
+\$ t_o\$$$ t_o$$
+
+```{r}
+ehat1 <- resid(cint1.dyn)
+checkresiduals(ehat1)
+
+cint2.dyn <- dynlm(d(ehat)~L(ehat)-1) # Modèle VEC...retard et delta ehat
+
+summary(cint2.dyn)
+```
+
+**R😆:La pvalue est faible mais le \$ R\^2 \$ est faible...les coéfficients sont significatifs**
+
+### Estimation du modèle VAR
+
+```{r}
+vecaus<- dynlm(d(aus)~L(ehat), data=gdp)  #aus
+
+vecusa <- dynlm(d(usa)~L(ehat), data=gdp) #aus
+
+summary(vecaus)
+summary(vecusa)
+
+tidy(vecaus)
+```
+
+**R : les p values sont faible et les coefficients répresentatifs pour aus**
+
+```{r}
+
+```
+
+## **Estimating a VAR Model**
+
+$$
+\Delta y_t = \beta_11\Delta y__t +\beta_12 \Delta x_t-1 +\nu^(\Delta_y)
+$$
+
+```{r}
+data("fred", package="PoEdata")
+fred <- ts(fred, start=c(1960,1),end=c(2009,4),frequency=4)
+ts.plot(fred[,"c"],fred[,"y"], type="l", 
+        lty=c(1,2), col=c(1,2))
+legend("topleft", border=NULL, legend=c("c=consommation","y=revenue"), 
+       lty=c(1,2), col=c(1,2))
+```
+
+On voit une sorte de tendance ce qui nous suggère une non stationnarité des données
+
+### Vérification de la cointegration
+
+#### Vérification de la stationnarité
+
+```{r}
+adf.test(fred[,"c"])
+
+adf.test(fred[,"y"])
+```
+
+**R :Non stationnariité pour c et y On est donc dans un cas de VAR a deltz ou VEC...allons donc vérifier la cointégration des données**
+
+```{r}
+b_fred=dynlm(c~y,data=fred)
+
+err2=residuals(b_fred)
+
+adf.test(err2)
+```
+
+**R :Pas de cointégration donc VECM eliminé**
+
+**Verifions les conditions pour le VAR**
+
+```{r}
+adf.test(diff(fred[,"c"]))
+ndiffs(fred[,"c"])
+adf.test(diff(fred[,"y"]))
+ndiffs(fred[,"y"])
+
+
+#Test de causalité selon granger
+grangertest(fred[,"y"],fred[,"c"])
+```
+
+**peut donc realiser le modele de VAR**
+
+```{r}
+library(vars)
+Dc <- diff(fred[,"c"])
+Dy <- diff(fred[,"y"])
+
+varmat <- as.matrix(cbind(Dc,Dy))  
+
+varfit <- VAR(varmat) # Modèle VAR`VAR()` from package `vars`
+summary(varfit)
+```
+
+## **Impulse Responses and Variance Decompositions**
+
+```{r}
+impresp <- irf(varfit)
+summary(impresp)
+
+plot(impresp)
+```
+
+```{r}
+plot(fevd(varfit)) # `fevd()` is in package `vars`
+
+```
+
+```{r}
+serial.test(varfit) # autocorrélation.....il  faut eviter l'autocorrélation
+```
+
+$$
+H_o : \text{Coefficient constant dans le temps}
+$$
+
+```{r}
+arch.test(varfit) #homogénéité
+```
+
+```{r}
+# Pour faire le forecast il faut la normalité des données
+
+
+```

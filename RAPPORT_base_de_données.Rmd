@@ -1,0 +1,269 @@
+---
+title: '  Base de données'
+output:
+  word_document: default
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+EXERCICE1
+
+```{r}
+
+# Charger les librairies
+library(FactoMineR)
+
+library(GGally)
+
+library(readxl)
+# Charger la base de données
+
+wine <- read_excel("wine.xlsx")
+
+View(wine)
+
+# examiner les dimensions (nombre de lignes et nombre de colonnes) de la base
+dim(wine)
+
+# Visualiser les 5 prémières lignes de la base de données
+head(wine, 5)
+
+
+# Supprimer la colonne de la variable target
+wine <- wine[, -14]
+
+# head(wine, 5) # pour verifier l'opération
+
+# Examiner la matrice de diagramme de dispersion
+
+ggpairs(wine)
+
+# Réaliser l'ACP
+
+ResACP <- PCA(wine, graph = FALSE)
+ResACP
+
+# Extraire les Valeurs propres de l'ACP
+ResACP$eig
+
+# Extraire le tableau des corrélations des variables avec les Composantes Principales
+ResACP$var$cor
+
+# Afficher le cercle des corrélation des variables avec les Composante Principales 1 & 2
+
+plot(ResACP, choix = "var", axes = c(1, 2))
+
+
+# Afficher  les axes des Composante Principales 1 & 2
+plot(ResACP, choix = "ind", axes = c(1, 2))
+
+
+```
+
+EXERCICE2
+
+```{r}
+rm(list=ls(all=TRUE))
+
+#Charger les librairies
+
+library(readxl)
+library(FactoMineR)
+
+
+#Charger les données
+
+housetasks <- read_excel("housetasks.xlsx")
+Data <-housetasks
+
+View(housetasks)
+
+names(Data)
+
+head(Data,1)
+
+
+
+# Table de Contingence
+
+#DataAFC <- Data[-1, ]
+DataAFC <- Data[ ,-1]
+
+
+
+View(DataAFC)
+
+dim(DataAFC) #dimension 
+
+
+#  Exécuter l'analyse factorielle des correspondances (AFC)
+CAResults1 <- CA(DataAFC,graph = FALSE)
+
+#Afficher les résultats de l'analyse des correspondances.
+summary(CAResults1)
+
+
+# Modifier les noms des colonnes
+rownames(CAResults1$row$coord) <- c("Cooking", "Laundry","Cleaning","Shopping", "Ironing","Finances","Reepairs","Driving","Gardening","Homework","Dishes")
+
+
+# Visualiser le résultat sur le biplot
+plot.CA(CAResults1, axes = c(1, 2))
+
+```
+
+EXERCICE3:ACM
+
+```{r}
+#Charger les librairies
+library(readxl)
+
+library(FactoMineR)
+library(factoextra)
+library("corrplot")
+
+# Charger les données
+adult_clean <- read_excel("adult_clean.xlsx")
+View(adult_clean)
+
+data <-adult_clean
+attach(data)
+View(data)
+
+
+#'In the R code below, the MCA is performed only on the active
+#'individuals/variables :
+res.mca <- MCA(data, graph = FALSE)
+print(res.mca)
+
+
+#Valeurs propres
+eig.val <- get_eigenvalue(res.mca)
+head(eig.val)
+eig.val
+
+#Inertie des variables
+fviz_screeplot(res.mca, addlabels = TRUE, ylim = c(0, 45))
+
+#'Graphe des individus et des variables categorielles
+fviz_mca_biplot(res.mca,repel = TRUE, ggtheme = theme_minimal())
+
+#'Graphe des variables
+
+var <- get_mca_var(res.mca)
+var
+summary(res.mca)
+#'The different components can be accessed as follow:
+# Coordinates
+var$coord
+# Cos2: quality on the factore map
+var$cos2
+# Contributions to the principal components
+var$contrib
+
+
+#'Correlation between variables and principal dimensions
+#'To visualize the correlation between variables 
+#'and MCA principal dimensions, type this:
+fviz_mca_var(res.mca, choice = "mca.cor", 
+             repel = TRUE, # Avoid text overlapping (slow)
+             ggtheme = theme_minimal())
+
+#'Coordinates of variable categories
+#'The R code below displays the coordinates of each variable 
+#'categories in each dimension (1, 2 and 3):
+head(round(var$coord, 2), 4)
+
+#'Use the function fviz_mca_var() [in factoextra] 
+#'to visualize only variable categories:
+#fviz_mca_var(res.mca, 
+#           repel = TRUE, # Avoid text overlapping (slow)
+#             ggtheme = theme_minimal())
+
+
+#'It’s possible to change the color and the shape of the variable points using the arguments col.var and shape.var as follow:
+#fviz_mca_var(res.mca, col.var="black", shape.var = 15,
+ #            repel = TRUE)
+
+
+#'Quality of representation of variable categories
+#
+head(var$cos2)
+
+
+fviz_mca_var(res.mca, col.var = "cos2",
+             gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), 
+             repel = TRUE, # Avoid text overlapping
+             ggtheme = theme_minimal())
+
+
+
+# Change the transparency by cos2 values
+#fviz_mca_var(res.mca, alpha.var="cos2",
+  #           repel = TRUE,
+ #            ggtheme = theme_minimal())
+
+#'You can visualize the cos2 of row categories on all the dimensions 
+#'using the corrplot package:
+
+corrplot(var$cos2, is.corr=FALSE)
+
+#'It’s also possible to create a bar plot of variable cos2 
+#'using the function fviz_cos2()[in factoextra]:
+
+# Cos2 of variable categories on Dim.1 and Dim.2
+#fviz_cos2(res.mca, choice = "var", axes = 1:2)
+```
+
+EXERCICE4 :AFDM
+
+```{r}
+#' Clear the workspace
+rm(list=ls(all=TRUE))
+
+#' Packages
+library(readxl)
+
+library(FactoMineR)
+library(ggplot2)
+library(factoextra)
+library(PCAmixdata)
+library(base)
+
+# Import data
+
+bank <- read_excel("bank.xlsx")
+View(bank)
+
+dim(bank)
+
+head(bank,10)
+str(bank)
+
+#Basic Statistics of dataset 
+summary(bank)
+
+#' Perform the analyse and
+#' obtain the results on the each type of variables  and on the individuals 
+res.famd <- FAMD(bank, graph = FALSE)
+summary (res.famd)
+
+#****Visualiation****# 
+# the respective projection of variables and individuals on  the selected principal components
+fviz_famd_var(res.famd)  # Graph of variables
+
+#fviz_famd_ind(res.famd,c(1,2))  # Graph of individuals
+
+# Graphical Representation for the eigenvalue 
+fviz_eig(res.famd) 
+# Graphical representation of the contribution of variables on each axis
+fviz_contrib(res.famd, choice ="var",axes = 1) 
+fviz_contrib(res.famd, choice ="var",axes = 2)
+# Graphical representation of the contribution of individuals  on each axis
+fviz_contrib(res.famd, choice ="ind",axes = 1) 
+fviz_contrib(res.famd, choice ="ind",axes = 2) 
+
+
+
+```

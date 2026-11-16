@@ -1,0 +1,197 @@
+# **Exercice1**
+
+Voici les réponses à votre épreuve, tirées exclusivement du document de cours fourni.
+
+------------------------------------------------------------------------
+
+### **Questions de cours**
+
+**1. Quelques propriétés de la fonction de répartition empirique (**$F_n(x)$) (Source : Pages 3-4) \* **Sans biais :** $F_n(x)$ est un estimateur sans biais de $F(x)$, soit $E[F_n(x)] = F(x)$. \* **Convergence de la variance :** $Var[F_n(x)] = \frac{F(x)(1-F(x))}{n} \longrightarrow 0$ quand $n \to \infty$. \* **Théorème Central-Limite :** $\sqrt{n}(F_n(x) - F(x))$ converge en loi vers une loi normale $N(0, F(x)(1-F(x)))$. \* **Loi des grands nombres :** $F_n(x)$ tend vers $F(x)$ presque sûrement pour tout $x \in \mathbb{R}$. \* **Théorème de Glivenko-Cantelli :** Fournit la convergence presque sûre uniforme : $\sup_{x \in \mathbb{R}} |F_n(x) - F(x)| \xrightarrow{n \to \infty} 0$ p.s.
+
+**2. Principe du rééchantillonnage Bootstrap** (Source : Pages 54-55) Le principe consiste à substituer à la distribution de probabilité inconnue $F$ la distribution empirique $\hat{F}$. On crée des échantillons « artificiels » (répliques Bootstrap) par $n$ tirages aléatoires **avec remise** parmi les $n$ observations initiales. On calcule ensuite la statistique sur chaque réplique pour construire sa loi de distribution empirique.
+
+**3. Différence entre la méthode d'échantillonnage de Bootstrap et celle de Jackknife** (Source : Page 67) \* **Tirages :** Le Bootstrap utilise des tirages **avec remise**, alors que le Jackknife utilise des tirages **sans remise**. \* **Efficacité :** Le Jackknife est généralement moins efficace que le Bootstrap. \* **Linéarité :** Le Jackknife est une approximation linéaire du Bootstrap. Il échoue si la statistique n'est pas une fonction différentiable (ex: la médiane).
+
+**4. Deux méthodes d'estimation de la densité non paramétrique** (Source : Pages 8 et 12) \* **L'estimation par les histogrammes :** Basée sur des rectangles dont les aires sont égales aux fréquences des classes. \* **L'estimation par la méthode du noyau (ou estimateur de Parzen-Rosenblatt) :** Consiste à évaluer la densité en comptant les observations dans un certain voisinage via une fonction noyau $K$ et un paramètre de lissage $h$.
+
+**5. Définir tests paramétriques et tests non paramétriques** (Source : Pages 22 et 43) \* **Statistique non paramétrique :** Méthodes permettant de tirer des informations sans faire l'hypothèse que la loi appartient à une famille paramétrée connue (loi inconnue). \* **Tests paramétriques :** Tests où l'on compare des paramètres (moyenne, variance) en supposant souvent une distribution théorique connue (ex: Normalité).
+
+------------------------------------------------------------------------
+
+### **Exercice 1**
+
+**1. Étude de l'intervalle de confiance de la moyenne** (Source : Pages 23, 25, 68) \* **a. Code R pour simuler** $M=50\,000$ échantillons ($n=20$, $N(-1.2, 2)$) : `r     M = 50000; n = 20     # Note : variance = 2 donc sd = sqrt(2)     echantillons = matrix(rnorm(M * n, mean = -1.2, sd = sqrt(2)), nrow = M)` \* **b. Code R pour l'estimation par IC à 90% :** `r     # Utilisation de la fonction t.test mentionnée page 25     apply(echantillons, 1, function(x) t.test(x, conf.level = 0.9)$conf.int)`
+
+**2. Étude de l'intervalle de confiance par la méthode du bootstrap** (Source : Pages 62, 68, 69) \* **a. Code R pour simuler** $M=500$ échantillons ($n=20$, $Exp(10)$) : `r     M = 500; n = 20; moyenne_theo = 10     # Dans une loi exponentielle, espérance = 1/lambda, donc lambda = 1/10     ech_exp = matrix(rexp(M * n, rate = 1/moyenne_theo), nrow = M)` \* **b. Code R pour IC à 90% par la méthode percentile :** `r     library(boot)     stat_moyenne <- function(data, indices) { return(mean(data[indices])) }     # Exemple pour le premier échantillon     res_boot = boot(data = ech_exp[1,], statistic = stat_moyenne, R = 1000)     boot.ci(res_boot, conf = 0.90, type = "perc")`
+
+------------------------------------------------------------------------
+
+### **Exercice 2** (Basé sur les données `Nile`)
+
+**1. Code R pour tracer la fonction de répartition empirique :** (Source : Page 4)
+
+``` r
+plot(ecdf(Nile), main="Fonction de répartition empirique - Nile")
+```
+
+**2. Code R pour tracer la fonction de quantile empirique :** (Source : Page 6)
+
+``` r
+n = length(Nile)
+ptx = seq(from=1/n, to=1, by=1/n)
+Qn = quantile(Nile, ptx)
+plot(ptx, Qn, type='l', xlab="p", ylab="Qn(p)", main="Quantile empirique")
+```
+
+**3. Code R pour calculer et représenter un estimateur à noyau de la densité :** (Source : Page 20)
+
+``` r
+d = density(Nile)
+plot(d, main="Estimation par noyau de la densité")
+```
+
+**4. Code R pour tracer plusieurs estimateurs à noyau (fenêtres différentes) :** (Source : Page 20)
+
+``` r
+plot(density(Nile, bw="nrd0"), col="red") # Fenêtre automatique
+lines(density(Nile, bw=50), col="blue")   # Fenêtre fixée à 50
+```
+
+------------------------------------------------------------------------
+
+### **Exercice 3**
+
+**Données :** `x = c(23, 16, 21, 24, 34, 30, 28, 24, 26, 18, 23, 23, 36, 37, 49, 50, 51, 56, 46, 41, 54, 30, 40, 31)`
+
+**1. Code R pour calculer les estimations bootstrap de la médiane (**$B=1000$) : (Source : Pages 57-58)
+
+``` r
+library(boot)
+f_mediane <- function(data, i) { median(data[i]) }
+res_med = boot(data = x, statistic = f_mediane, R = 1000)
+print(res_med)
+```
+
+**2. Code R pour calculer les intervalles de confiance de la médiane :** (Source : Page 62)
+
+``` r
+boot.ci(res_med, type = c("perc", "basic"))
+```
+
+```{r}
+
+mu <- -1.2
+sd <- sqrt(2) # car la variance est 2
+#
+
+
+M = 50000; n = 20
+
+Dat = matrix(rnorm(M * n, mean = -1.2, sd = sqrt(2)), nrow = M)
+Dat
+```
+
+1-b
+
+```{r}
+# Calcul des moyennes par échantillon
+t.test(Dat, conf.level=0.9)$conf.int 
+```
+
+2-a
+
+```{r}
+library(boot) 
+
+
+M_boot <- 500
+n_boot <- 20
+lambda <- 1 / 10
+
+# Données 
+
+
+A<-replicate(M_boot,rexp(n_boot,lambda))
+
+
+```
+
+2-b
+
+```{r}
+library(boot)
+# 1. Définition de la fonction statistique (selon page 57)
+stat_moyenne <- function(donnees, indices) {
+  return(mean(donnees[indices]))
+}
+
+# 2. Boucle pour calculer l'IC sur chaque échantillon (selon page 69)
+for (i in 1:499) {
+  # Calcul du bootstrap pour la ligne i de la matrice A
+  res_boot <- boot(data = A[i, ], statistic = stat_moyenne, R = 500)
+  
+  # Calcul et affichage de l'intervalle percentile à 90% (selon page 62)
+  # On utilise print() pour que le résultat s'affiche dans la console à chaque tour
+  print(boot.ci(res_boot, conf = 0.90, type = "perc"))
+}
+```
+
+3-
+
+# **Exercice2**
+
+```{r}
+
+data(Nile)
+x <- Nile
+
+#1 Fonction de répartition empirique
+
+Fn <- ecdf(x)
+plot(Fn, main = "Fonction de répartition empirique", xlab = "Débit", ylab =
+"F(x)")
+
+
+
+#2 Fonction de quantile empirique
+
+p <- seq(0, 1, length = 100)
+q <- quantile(x, probs = p)
+plot(p, q, type = "l", main = "Fonction de quantile empirique")
+
+
+#3
+
+dens <- density(Nile)
+plot(dens, main="Estimateur à noyau de la densité")
+
+
+#4
+plot(density(Nile, bw="nrd0"), col="red") # Fenêtre automatique
+lines(density(Nile, bw=50), col="blue")   # Fenêtre fixée à 50
+
+```
+
+# **Exercice3**
+
+```{r}
+library(boot)
+x = c(23, 16, 21, 24, 34, 30, 28, 24, 26, 18, 23, 23, 36, 37, 49, 50, 51, 56, 46, 41, 54, 30, 40, 31)
+B<-1000
+#1 Estimations boostrap de la médiane
+
+#Fonction calculant la mediane en utilisant median 
+Boot.median <- function(x, i) {
+  z<- median (x[i])
+  return (z) 
+}
+
+  boot_means <- boot(x,Boot.median,B)
+  boot_means$t
+  
+#2 Intervalles de confiance  
+  boot_means_ci1=boot.ci(boot_means,type=c("perc","basic","bca"))
+  
+  boot_means_ci1
+
+```

@@ -1,0 +1,22 @@
+```{r}
+library(readxl)
+data <- read_excel("C:/Users/VICTUS/Downloads/regression_hours_pass.xlsx")
+#View(regression_hours_pass)
+```
+
+```{r}
+Pass=data$Pass
+Hours=data$Hours
+p=function(x){
+  1/(1+exp(x))
+}
+d=function(x){
+  log((x)/(1-x))
+}
+x=Hours
+plot(x,d(x))
+model <- glm(Pass ~ Hours, data = data, family = binomial)
+plot(model)
+summary(model)
+
+```

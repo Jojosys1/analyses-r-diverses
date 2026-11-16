@@ -1,0 +1,280 @@
+# Resultats primaire avec le modèle de base
+
+```{r}
+
+library(readxl)       # lecture des fichiers Excel
+library(nnet)         # régression multinomiale (multinom)
+library(VGAM)         # modèle VGLM pour diagnostics avancés
+library(dplyr)        # manipulation des données
+library(tidyr)        # mise en forme des données
+library(ggplot2)      # visualisations
+library(ggpubr)       # arrangement des graphiques
+library(scales)       # formatage des axes
+library(knitr)        # tableaux dans le rapport
+library(kableExtra)   # mise en forme avancée des tableaux
+library(car)          # VIF (multicolinéarité)
+library(pROC)         # courbes ROC et AUC
+library(caret)        # matrice de confusion et métriques
+library(reshape2)     # pivotement des données
+library(forcats)      # gestion des facteurs
+library(RColorBrewer) # palettes de couleurs
+```
+
+# Analyse exploratoire
+
+```{r}
+
+head(data_s)
+Csdc=data_s$Csdc
+count(Csdc) %>%
+  mutate(
+    pct   = round(100 * n / sum(n), 1),
+    label = paste0(n, "\n(", pct, "%)"),
+    Csdc_court = c("Vivant", "Décès cancer", "Décès autre")
+  )
+
+summarise(data_s)
+plot(data_s$Survivalmonths)
+summary(data_s$Survivalmonths)
+
+```
+
+```{r}
+# ── Variable numérique : Survivalmonths ──────────────────────────────────────
+cat("═══ SURVIE (Survivalmonths) ════════════════\n")
+surv <- data_s %>%
+  summarise(
+    N         = n(),
+    Moyenne   = round(mean(Survivalmonths, na.rm = TRUE), 2),
+    Médiane   = median(Survivalmonths, na.rm = TRUE),
+    `Écart-type` = round(sd(Survivalmonths, na.rm = TRUE), 2),
+    Variance  = round(var(Survivalmonths, na.rm = TRUE), 2),
+    Min       = min(Survivalmonths, na.rm = TRUE),
+    Max       = max(Survivalmonths, na.rm = TRUE),
+    Q1        = quantile(Survivalmonths, 0.25, na.rm = TRUE),
+    Q3        = quantile(Survivalmonths, 0.75, na.rm = TRUE),
+    IQR       = IQR(Survivalmonths, na.rm = TRUE),
+    Asymétrie = round(moments::skewness(Survivalmonths, na.rm = TRUE), 3),
+    Kurtosis  = round(moments::kurtosis(Survivalmonths, na.rm = TRUE), 3)
+  )
+
+kable(t(surv), col.names = "Valeur",
+      caption = "Tableau 2 — Statistiques descriptives : Survivalmonths") %>%
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE)
+
+# ── Statistiques par groupe (Csdc) ───────────────────────────────────────────
+cat("\n═══ SURVIE PAR CATÉGORIE DE CSDC ═══\n")
+surv_groupe <- data_s %>%
+  group_by(Csdc) %>%
+  summarise(
+    N           = n(),
+    `%`         = round(100 * n() / nrow(seer_multi), 1),
+    Moyenne     = round(mean(Survivalmonths, na.rm = TRUE), 1),
+    Médiane     = median(Survivalmonths, na.rm = TRUE),
+    `Écart-type`= round(sd(Survivalmonths, na.rm = TRUE), 1),
+    Variance    = round(var(Survivalmonths, na.rm = TRUE), 1),
+    Min         = min(Survivalmonths, na.rm = TRUE),
+    Max         = max(Survivalmonths, na.rm = TRUE)
+  )
+
+kable(surv_groupe,
+      caption = "Tableau 3 — Statistiques de survie par catégorie de Csdc",
+      row.names = FALSE) %>%
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE) %>%
+  column_spec(1, bold = TRUE) %>%
+  row_spec(1, background = "#e8f5e9")
+```
+
+```{r}
+
+# Chargement des donnees
+data_s <- read_excel("C:/Users/VICTUS/Desktop/Régression logistique multinomiale/10.21037atm-2020-57-1 (1vr).xlsx")
+df<-data_s 
+# Pretraitement
+df <- df %>% mutate(across(c(Agegroup, Sex, Race, Primarysite, Grade,
+                             Stage, Chemotherapy, Status, Csdc), as.factor))
+
+# Fixation de la categorie de reference pour la variable cible
+df$Csdc <- relevel(df$Csdc, ref = "Alive")
+
+# Division train/test 70/30
+set.seed(123)
+idx <- createDataPartition(df$Csdc, p = 0.7, list = FALSE)
+train_data <- df[idx, ]
+test_data  <- df[-idx, ]
+
+# Estimation du modele multinomial logit
+fit <- multinom(Csdc ~ Agegroup + Sex + Race + Primarysite + Grade + Stage +
+                Chemotherapy,
+                data = train_data, trace = FALSE)
+
+# Affichage des resultats
+summary(fit)
+
+# Predictions et matrice de confusion
+pred <- predict(fit, newdata = test_data)
+confusionMatrix(pred, test_data$Csdc)
+
+# Probabilites predites (utiles pour calcul d'AUC, etc.)
+pred_probs <- predict(fit, newdata = test_data, type = "probs")
+head(pred_probs)
+```
+
+# Verification des hypothèses
+
+## Multicolinéarité
+
+```{r}
+confint(fit, level = 0.95)
+vif(fit)
+```
+
+```{r}
+a=step(fit)
+summary(a)
+```
+
+```{r}
+predict(reg, data.frame(X1 = 1, X2 = 25, X3 = 4), type = "probs")
+```
+
+## Significativite du modele wald
+
+```{r}
+
+z = summary(fit)$coeff / summary(fit)$standard.errors
+pvaleur = 2 * (1- pnorm(abs(z), 0, 1))
+pvaleur
+```
+
+## LR
+
+```{r}
+fit0 = multinom(data_s$Csdc ~ 1)
+rv = fit0$deviance- fit$deviance
+ddl = fit$edf- fit0$edf
+pvaleur = 1- pchisq(rv, ddl)
+pvaleur
+```
+
+```{r}
+library(stats)
+#Pour faire l’approche pas à pas avec AIC :
+step(fit, direction = "both", k = 2)
+#Pour faire l’approche pas à pas avec BIC :
+step(fit, direction = "both", k = log(length(Csdc)))
+```
+
+```{r}
+pr = predict(fit)
+mc = table(train_data$Csdc, pr)
+mc
+
+
+t = (sum(mc)- sum(diag(mc))) / sum(mc)
+t
+
+```
+
+```{r}
+library(car)
+Anova(fit)
+```
+
+```{r}
+reg <- multinom(Csdc ~ Agegroup + Sex + Primarysite + Grade + Stage +
+                Chemotherapy,
+                data = train_data, MaxNWts = 15000,  maxit   = 300,  trace = FALSE)
+
+summary(reg)
+
+# Predictions et matrice de confusion
+pred <- predict(fit, newdata = test_data)
+confusionMatrix(pred, test_data$Csdc)
+
+# Probabilites predites (utiles pour calcul d'AUC, etc.)
+pred_probs <- predict(fit, newdata = test_data, type = "probs")
+head(pred_probs)
+```
+
+```{r}
+z = summary(reg)$coeff / summary(reg)$standard.errors
+pvaleur = 2 * (1- pnorm(abs(z), 0, 1))
+pvaleur
+```
+
+```{r}
+reg0 = multinom(data_s$Csdc ~ 1)
+rv = reg0$deviance- reg$deviance
+ddl = reg$edf- reg0$edf
+pvaleur = 1- pchisq(rv, ddl)
+pvaleur
+
+
+
+pr = predict(reg)
+mc = table(train_data$Csdc, pr)
+length(pr)
+length(train_data$Csdc)
+mc
+```
+
+```{r}
+null_model <- multinom(Csdc ~ 1, data = train_data,
+                       MaxNWts = 15000, trace = FALSE)
+
+ll_full1 <- as.numeric(logLik(reg))
+ll_null1 <- as.numeric(logLik(null_model))
+lrt_chi2 <- 2 * (ll_full - ll_null)
+lrt_ddl  <- reg$edf - null_model$edf
+lrt_p    <- pchisq(lrt_chi2, df = lrt_ddl, lower.tail = FALSE)
+
+cat("══ TEST DU RAPPORT DE VRAISEMBLANCE (LRT) ══════\n")
+cat(sprintf("  Log-vraisemblance modèle complet : %.3f\n", ll_full))
+cat(sprintf("  Log-vraisemblance modèle nul     : %.3f\n", ll_null))
+cat(sprintf("  LRT χ²(%d) = %.3f\n", lrt_ddl, lrt_chi2))
+cat(sprintf("  p-valeur = %.2e\n", lrt_p))
+cat(sprintf("  → %s\n",
+    ifelse(lrt_p < 0.05,
+           "✔ Le modèle est GLOBALEMENT SIGNIFICATIF (p < 0.05)",
+           "✘ Le modèle n'est PAS significatif")))
+cat("══════════════════════════════════════════════════\n")
+```
+
+```{r}
+n <- nrow(train_data)
+mcfadden   <- round(1 - ll_full1 / ll_null1, 4)
+cox_snell  <- round(1 - exp(2 * (ll_null1 - ll_full1) / n), 4)
+nagelkerke <- round(cox_snell / (1 - exp(2 * ll_null1 / n)), 4)
+deviance_expl <- round(1 - deviance(multimodel) / deviance(null_model), 4)
+
+
+r2_df <- data.frame(
+  Indicateur     = c("McFadden R²", "McFadden R² ajusté",
+                     "Cox & Snell R²", "Nagelkerke R²",
+                     "Déviance expliquée", "AIC", "BIC"),
+  Valeur         = c(mcfadden,
+                     round(1-(ll_full1-multimodel$edf)/ll_null1, 4),
+                     cox_snell, nagelkerke, deviance_expl,
+                     round(AIC(multimodel), 2),
+                     round(BIC(multimodel), 2)),
+  Interprétation = c(
+    ifelse(mcfadden > 0.40, "Excellent",
+    ifelse(mcfadden > 0.20, "Bon",
+    ifelse(mcfadden > 0.10, "Acceptable", "Faible"))),
+    "—", "—",
+    ifelse(nagelkerke > 0.60, "Excellent",
+    ifelse(nagelkerke > 0.40, "Bon",
+    ifelse(nagelkerke > 0.20, "Acceptable", "Faible"))),
+    paste0(round(deviance_expl * 100, 1), "% de déviance expliquée"),
+    "Plus bas = meilleur", "Plus bas = meilleur"
+  )
+)
+
+kable(r2_df, caption = "Tableau 8 — Qualité d'ajustement du modèle",
+      row.names = FALSE) %>%
+  kable_styling(bootstrap_options = c("striped","hover"), full_width = FALSE) %>%
+  column_spec(3, italic = TRUE, color = "gray30")
+```

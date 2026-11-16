@@ -1,0 +1,32 @@
+ANCOVA
+
+```{r}
+library(ggplot2)
+data(diamonds)
+
+library(readxl)
+ANCOVATP <- read_excel("ANCOVATP.xlsx")
+Survie=ANCOVATP$Survie
+Treat=ANCOVATP$Treat
+Age=ANCOVATP$Age
+
+```
+
+```{r}
+#modele <- lm(price ~ carat + cut, data = diamonds)
+
+
+modele2=lm(Survie~Age+Treat,data=ANCOVATP)
+anova(modele2)
+aov(modele2)
+
+```
+
+```{r}
+
+summary(b)
+```
+
+```{r}
+summary(c)
+```

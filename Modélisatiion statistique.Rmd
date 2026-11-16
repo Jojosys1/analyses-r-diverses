@@ -1,0 +1,137 @@
+---
+title: "Modélisatiion statstique"
+output: html_notebook
+---
+
+```{r}
+data("mtcars")
+
+View(mtcars)
+
+gear=Data$gear
+qsec=Data$qsec
+hp=Data$hp
+drat=Data$drat
+vs=Data$vs
+am=Data$am
+carb=Data$carb
+wt=mtcars$wt
+mpg=mtcars$mpg
+cyl=Data$cyl
+
+
+plot(wt,mpg)
+
+
+#Estimation of linear model
+
+M1=lm(mpg~wt,data=mtcars)
+summary(M1)
+
+
+lm
+
+step(M1)
+#Consommation qui pourrait dépendre du poids
+
+
+# modele = lm(y~x,data=...)
+#summary(modele)
+ 
+```
+
+We need to studies the mpg with using the 31 variables in dataset
+
+```{r}
+Data=mtcars[,-1]
+
+cor(mtcars)
+
+c = cor(cbind(Data), cbind(Data))
+c^2
+ 
+```
+
+Visualisation
+
+```{r}
+plot(mtcars$disp,mtcars$wt)
+
+Z=lm(disp~wt+hp)
+summary(Z)
+
+
+v=-129.9506+82.1125*wt+0.6578*hp
+plot(mtcars$disp,mtcars$hp)
+
+```
+
+D'après le ploting on remarque que les variables wt et disp sont probablement lie et apparenté par une regression linéaire simple
+
+```{r}
+#Estimation of linear model
+
+disp=Data$disp
+cyl=Data$cyl
+M1=lm(disp~wt,data=mtcars)
+M2=lm(disp~cyl,data=mtcars)
+
+summary(M1)
+summary(M2)
+```
+
+```{r}
+
+library(lars)
+
+ X = cbind(1,v,hp,qsec,drat,wt)
+ X1 = cbind(1,v,qsec,drat)
+
+ 
+ 
+ regLasso = lars(X1, mpg, type = "lasso")
+ summary(regLasso)
+
+```
+
+```{r}
+coef_step <- coef(regLasso)[4, ] 
+coef_step[coef_step != 0]
+```
+
+Voila les trois variables qui nous permettront de construire notre regression linéaire multiple
+
+```{r}
+
+# Modèle de régression multiple
+#modele <- lm(mpg ~ v+qsec+drat, data = mtcars)
+modele <- lm(mpg ~wt+disp+ hp+qsec+drat+wt, data = mtcars)
+
+
+# Résumé du modèle
+summary(modele)
+
+AIC(modele)
+
+
+```
+
+```{r}
+a=step(modele)
+```
+
+```{r}
+bptest(modele)
+
+
+#e=mpg-(-4.3978*wt+0.9462*qsec+1.6561*drat)
+plot(wt,e)
+plot(drat,e)
+plot(qsec,e)
+```
+
+```{r}
+plot(a)
+e=residuals(a)
+shapiro.test(e)
+```

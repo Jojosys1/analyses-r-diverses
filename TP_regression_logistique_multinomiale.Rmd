@@ -1,0 +1,85 @@
+### [Travail réalisé par]{.underline}
+
+-   **DOSSOU YOVO Thérèse**
+
+<!-- -->
+
+-   **GLODJO Jolémon**
+
+```{r}
+library(readxl)
+wine <- read_excel("wine.xlsx")
+View(wine)
+```
+
+# Présentation des données
+
+# Analyse exploratoire
+
+### Visualisation des données
+
+```{r}
+plot(wine$alcohol)
+plot(wine$alcohol)
+plot(wine$alcohol)
+```
+
+```{r}
+library(nnet)
+
+
+```
+
+```{r}
+library(readxl)
+seer_multi <- read_excel("C:/Users/VICTUS/Desktop/Régression logistique multinomiale/10.21037atm-2020-57-1 (1vr).xlsx")
+```
+
+```{r}
+summary(data_tp)
+```
+
+```{r}
+## Display part of the data
+head(seer_multi)
+tail(seer_multi)
+## Rewrite the ordinal categorical variables
+seer_multi$Grade <- factor(seer_multi$Grade, ordered = T, 
+levels = c("GradeI", "GradeII", 
+"GradeIII", "GradeIV"))
+seer_multi$Stage <- factor(seer_multi$Stage, ordered = T, 
+levels = c("I", "II", "III", "IV"))
+
+## Specify the baseline level of the outcomes
+class(seer_multi$Csdc)
+seer_multi$Csdc<- factor(seer_multi$Csdc, ordered = F,levels=c("Dead","Alive","Dead (attributable to this cancer dx)
+","Dead of other cause"))
+seer_multi$Csdc <- relevel(seer_multi$Csdc, ref = "Alive")
+```
+
+```{r}
+library(nnet)
+library(dplyr)      # data manipulation
+library(tidyr)      # data tidying
+library(ggplot2)   
+## Run the multinomial model with the multinom function and summarize it
+#csdc=Cause specific death classification
+multimodel <- multinom(Csdc ~ Agegroup + Sex + Race + Primarysite + Grade + Stage + Chemotherapy, 
+data = seer_multi)
+summary(multimodel)
+## Turn coefficients into interpretable odds ratios
+oddsratio <- exp(coef(multimodel))
+```
+
+```{r}
+zvalues <- summary(multimodel)$coefficients / 
+summary(multimodel)$standard.errors
+pvalues <- pnorm(abs(zvalues), lower.tail = FALSE) * 2
+pvalues
+## (Intercept) AgeGroup30-39
+##Dead (attributable to this cancer dx) 0.000000e+00 0
+##Dead of other cause 1.206239e-197 0
+```
+
+```         
+```

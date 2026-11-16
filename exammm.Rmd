@@ -1,0 +1,372 @@
+
+b/ Code R  pour effectuer une estimation par intervalle de confiance 
+a 90 % de la moyenne 𝜇.
+ 
+inter.mu <- function(x) t.test(x,conf.level=0.9)$conf.int 
+res <- t(apply(simu, MARGIN=2,FUN=inter.mu)) 
+
+EXERCICE 1
+1-Etude de l'intervalle de confiance de la moyenne
+a/ Code R pour simuler M = 50 000 échantillons de taille n = 20 suivant une loi normale 
+de moyenne 𝜇 = −1,2 et de variance  𝜎^2 = 2. 
+
+n <- 20 
+M <- 50000 
+ech <- rnorm(n, mean=-1.2,sd=sqrt(2)) # Seulement un échantillon. 
+simu <- replicate(M ,rnorm(n,mean=-1.2,sd=sqrt(2)),simplify=TRUE) 
+fix(simu) # affiche le résultat dans un dataeditor 
+
+2-Etude de l'intervalle de confiance par la méthode du bootstrap
+
+a/ Code R pour simulons M = 500 échantillons de taille n = 20 suivant une loi 
+exponentielle d'espérance 1/𝜆=10 
+n <- 20 
+M <- 500 
+ech <- rexp(n, rate=1/10) # seulement un échantillon 
+simu.exp <- replicate(M, rexp(n, rate=1/10), simplify=TRUE)
+
+b/ Sur chaque échantillon, effectuons une estimation par intervalle de 
+confiance à 90 % de la moyenne 1/𝜆 par la méthode percentile du 
+bootstrap 
+Pour 1 échantillon : 
+library("boot") 
+moyenne <- function(x, indices) mean(x[indices]) 
+moy.boot <- boot(ech, moyenne, R=500, stype="i", sim="ordinary") 
+boot.ci(moy.boot, conf=0.9, type="perc")$percent[4:5] 
+Pour les M échantillons : 
+inter.boot.moy <- function(y) { 
+moy <- boot(y, moyenne, R=1000, stype="i", sim="ordinary") 
+boot.ci(moy, conf=0.9,type="perc")$percent[4:5] 
+} 
+res <- t(apply(simu.exp, MARGIN=2, FUN=inter.boot.moy)) 
+
+
+
+
+
+EXERCICE 2
+1 / Code R pour tracer la fonction de répartition empirique.
+
+data(Nile) # Charger les donnees LakeHuron
+
+donnees <- Nile # ranger les donnees dans un vecteur
+# La fonction de repartition empirique (ECDF)
+Ecdf <- ecdf(donnees) 
+
+ # Trace de la fonction de repartition empirique
+ plot(Ecdf,
+	main = "Fonction de repartition empirique (ECDF)",
+	xlab = "donnees",ylab = "F(x)",col = "blue",lwd = 2)
+
+
+2/ Code R pour tracer la fonction de quantile empirique.
+
+# Nombre d'observations
+ n <- length(donnees)
+ # Creation d'une sequence de probabilites
+ ptx <- seq(from = 1/n, to = 1, by = 1/n)
+
+ # Calcul des quantiles empiriques
+ Qn <- quantile(donnees, ptx)
+
+ # Trace des quantiles empiriques
+ plot(ptx, Qn, type = 'l', xlab = "p", ylab = 'Qn(p)',
+	main = "Quantile d'ordre p", col=4, lwd= 2)
+			
+3/ Code R pour calculer puis représenter un estimateur à noyau de la densité.
+
+# Calcul de l'estimateur a noyau pour les donnees 
+ densite_estimateur <- density(donnees) # noyau gaussien par defaut, bandwidth automatique
+
+ # Trace de l'estimateur
+ plot(densite_estimateur, main = "Estimateur a noyau de la densite",type = 'l',col = 4,lwd = 2)
+
+
+4/ Code R pour tracer dans une même fenêtre plusieurs estimateurs à noyau.
+
+# Cree une fenetre graphique avec 2 lignes et 3 colonnes
+ par(mfrow = c(2,3))
+ # Liste des noyaux a comparer
+noyau <- c("epanechnikov", "rectangular", "triangular", "biweight", "cosine", "optcosine")
+
+ # Boucle pour tracer la densite avec chaque noyau
+ for (i in 1:length(noyau)) {
+
+ # Calcul de la densite avec le noyau courant
+dens <- density(Obs, kernel = noyau[i])
+# Trace de la densite
+plot(dens,main = noyau[i])
+}
+
+
+EXERCICE 3
+1/ Estimation bootstrap de la médiane 
+library("boot")
+R<-1000 
+boot.median<-function(y,i) 
+{z<-median(y[i]) 
+z} 
+y=[23,16, 21, 24, 34, 30,............, 30, 40, 31]
+
+boot.me<-boot(y,boot.median,R) 
+boot.me 
+print(mean(boot.me$t))
+
+2/ Intervalle de confiance de la médiane 
+boot.ci(boot.me, conf=0.95)
+
+
+EXERCICE 1
+1-Etude de l'intervalle de confiance de la moyenne
+a/ Code R pour simuler M = 50 000 échantillons de taille n = 20 suivant une loi normale 
+de moyenne 𝜇 = −1,2 et de variance  𝜎^2 = 2. 
+
+n <- 20 
+M <- 50000 
+ech <- rnorm(n, mean=-1.2,sd=sqrt(2)) # Seulement un échantillon. 
+simu <- replicate(M ,rnorm(n,mean=-1.2,sd=sqrt(2)),simplify=TRUE) 
+fix(simu) # affiche le résultat dans un dataeditor 
+
+b/ Code R  pour effectuer une estimation par intervalle de confiance 
+a 90 % de la moyenne 𝜇.
+ 
+inter.mu <- function(x) t.test(x,conf.level=0.9)$conf.int 
+res <- t(apply(simu, MARGIN=2,FUN=inter.mu)) 
+
+
+2-Etude de l'intervalle de confiance par la méthode du bootstrap
+
+a/ Code R pour simulons M = 500 échantillons de taille n = 20 suivant une loi 
+exponentielle d'espérance 1/𝜆=10 
+n <- 20 
+M <- 500 
+ech <- rexp(n, rate=1/10) # seulement un échantillon 
+simu.exp <- replicate(M, rexp(n, rate=1/10), simplify=TRUE)
+
+b/ Sur chaque échantillon, effectuons une estimation par intervalle de 
+confiance à 90 % de la moyenne 1/𝜆 par la méthode percentile du 
+bootstrap 
+Pour 1 échantillon : 
+library("boot") 
+moyenne <- function(x, indices) mean(x[indices]) 
+moy.boot <- boot(ech, moyenne, R=500, stype="i", sim="ordinary") 
+boot.ci(moy.boot, conf=0.9, type="perc")$percent[4:5] 
+Pour les M échantillons : 
+inter.boot.moy <- function(y) { 
+moy <- boot(y, moyenne, R=1000, stype="i", sim="ordinary") 
+boot.ci(moy, conf=0.9,type="perc")$percent[4:5] 
+} 
+res <- t(apply(simu.exp, MARGIN=2, FUN=inter.boot.moy)) 
+
+
+
+
+
+EXERCICE 2
+1 / Code R pour tracer la fonction de répartition empirique.
+
+data(Nile) # Charger les donnees LakeHuron
+
+donnees <- Nile # ranger les donnees dans un vecteur
+# La fonction de repartition empirique (ECDF)
+Ecdf <- ecdf(donnees) 
+
+ # Trace de la fonction de repartition empirique
+ plot(Ecdf,
+	main = "Fonction de repartition empirique (ECDF)",
+	xlab = "donnees",ylab = "F(x)",col = "blue",lwd = 2)
+
+
+2/ Code R pour tracer la fonction de quantile empirique.
+
+# Nombre d'observations
+ n <- length(donnees)
+ # Creation d'une sequence de probabilites
+ ptx <- seq(from = 1/n, to = 1, by = 1/n)
+
+ # Calcul des quantiles empiriques
+ Qn <- quantile(donnees, ptx)
+
+ # Trace des quantiles empiriques
+ plot(ptx, Qn, type = 'l', xlab = "p", ylab = 'Qn(p)',
+	main = "Quantile d'ordre p", col=4, lwd= 2)
+			
+3/ Code R pour calculer puis représenter un estimateur à noyau de la densité.
+
+# Calcul de l'estimateur a noyau pour les donnees 
+ densite_estimateur <- density(donnees) # noyau gaussien par defaut, bandwidth automatique
+
+ # Trace de l'estimateur
+ plot(densite_estimateur, main = "Estimateur a noyau de la densite",type = 'l',col = 4,lwd = 2)
+
+
+4/ Code R pour tracer dans une même fenêtre plusieurs estimateurs à noyau.
+
+# Cree une fenetre graphique avec 2 lignes et 3 colonnes
+ par(mfrow = c(2,3))
+ # Liste des noyaux a comparer
+noyau <- c("epanechnikov", "rectangular", "triangular", "biweight", "cosine", "optcosine")
+
+ # Boucle pour tracer la densite avec chaque noyau
+ for (i in 1:length(noyau)) {
+
+ # Calcul de la densite avec le noyau courant
+dens <- density(Obs, kernel = noyau[i])
+# Trace de la densite
+plot(dens,main = noyau[i])
+}
+
+
+EXERCICE 3
+1/ Estimation bootstrap de la médiane 
+library("boot")
+R<-1000 
+boot.median<-function(y,i) 
+{z<-median(y[i]) 
+z} 
+y=[23,16, 21, 24, 34, 30,............, 30, 40, 31]
+
+boot.me<-boot(y,boot.median,R) 
+boot.me 
+print(mean(boot.me$t))
+
+2/ Intervalle de confiance de la médiane 
+boot.ci(boot.me, conf=0.95)
+
+
+
+
+
+EXERCICE 1
+1-Etude de l'intervalle de confiance de la moyenne
+a/ Code R pour simuler M = 50 000 échantillons de taille n = 20 suivant une loi normale 
+de moyenne 𝜇 = −1,2 et de variance  𝜎^2 = 2. 
+
+n <- 20 
+M <- 50000 
+ech <- rnorm(n, mean=-1.2,sd=sqrt(2)) # Seulement un échantillon. 
+simu <- replicate(M ,rnorm(n,mean=-1.2,sd=sqrt(2)),simplify=TRUE) 
+fix(simu) # affiche le résultat dans un dataeditor 
+
+b/ Code R  pour effectuer une estimation par intervalle de confiance 
+a 90 % de la moyenne 𝜇.
+ 
+inter.mu <- function(x) t.test(x,conf.level=0.9)$conf.int 
+res <- t(apply(simu, MARGIN=2,FUN=inter.mu)) 
+
+
+2-Etude de l'intervalle de confiance par la méthode du bootstrap
+
+a/ Code R pour simulons M = 500 échantillons de taille n = 20 suivant une loi 
+exponentielle d'espérance 1/𝜆=10 
+n <- 20 
+M <- 500 
+ech <- rexp(n, rate=1/10) # seulement un échantillon 
+simu.exp <- replicate(M, rexp(n, rate=1/10), simplify=TRUE)
+
+b/ Sur chaque échantillon, effectuons une estimation par intervalle de 
+confiance à 90 % de la moyenne 1/𝜆 par la méthode percentile du 
+bootstrap 
+Pour 1 échantillon : 
+library("boot") 
+moyenne <- function(x, indices) mean(x[indices]) 
+moy.boot <- boot(ech, moyenne, R=500, stype="i", sim="ordinary") 
+boot.ci(moy.boot, conf=0.9, type="perc")$percent[4:5] 
+Pour les M échantillons : 
+inter.boot.moy <- function(y) { 
+moy <- boot(y, moyenne, R=1000, stype="i", sim="ordinary") 
+boot.ci(moy, conf=0.9,type="perc")$percent[4:5] 
+} 
+res <- t(apply(simu.exp, MARGIN=2, FUN=inter.boot.moy)) 
+
+
+
+
+
+EXERCICE 2
+1 / Code R pour tracer la fonction de répartition empirique.
+
+data(Nile) # Charger les donnees LakeHuron
+
+donnees <- Nile # ranger les donnees dans un vecteur
+# La fonction de repartition empirique (ECDF)
+Ecdf <- ecdf(donnees) 
+
+ # Trace de la fonction de repartition empirique
+ plot(Ecdf,
+	main = "Fonction de repartition empirique (ECDF)",
+	xlab = "donnees",ylab = "F(x)",col = "blue",lwd = 2)
+
+
+2/ Code R pour tracer la fonction de quantile empirique.
+
+# Nombre d'observations
+ n <- length(donnees)
+ # Creation d'une sequence de probabilites
+ ptx <- seq(from = 1/n, to = 1, by = 1/n)
+
+ # Calcul des quantiles empiriques
+ Qn <- quantile(donnees, ptx)
+
+ # Trace des quantiles empiriques
+ plot(ptx, Qn, type = 'l', xlab = "p", ylab = 'Qn(p)',
+	main = "Quantile d'ordre p", col=4, lwd= 2)
+			
+3/ Code R pour calculer puis représenter un estimateur à noyau de la densité.
+
+# Calcul de l'estimateur a noyau pour les donnees 
+ densite_estimateur <- density(donnees) # noyau gaussien par defaut, bandwidth automatique
+
+ # Trace de l'estimateur
+ plot(densite_estimateur, main = "Estimateur a noyau de la densite",type = 'l',col = 4,lwd = 2)
+
+
+4/ Code R pour tracer dans une même fenêtre plusieurs estimateurs à noyau.
+
+# Cree une fenetre graphique avec 2 lignes et 3 colonnes
+ par(mfrow = c(2,3))
+ # Liste des noyaux a comparer
+noyau <- c("epanechnikov", "rectangular", "triangular", "biweight", "cosine", "optcosine")
+
+ # Boucle pour tracer la densite avec chaque noyau
+ for (i in 1:length(noyau)) {
+
+ # Calcul de la densite avec le noyau courant
+dens <- density(Obs, kernel = noyau[i])
+# Trace de la densite
+plot(dens,main = noyau[i])
+}
+
+
+EXERCICE 3
+1/ Estimation bootstrap de la médiane 
+library("boot")
+R<-1000 
+boot.median<-function(y,i) 
+{z<-median(y[i]) 
+z} 
+y=[23,16, 21, 24, 34, 30,............, 30, 40, 31]
+
+boot.me<-boot(y,boot.median,R) 
+boot.me 
+print(mean(boot.me$t))
+
+2/ Intervalle de confiance de la médiane 
+boot.ci(boot.me, conf=0.95)
+
+
+
+Le **bootstrap** est une méthode universelle de construction de distribution d’erreurs qui repose sur la **simulation informatique (Monte Carlo)**. Son principe fondamental consiste à pallier l'ignorance de la loi de probabilité réelle d'une population en utilisant les données déjà observées.
+
+Voici les points clés définissant son fonctionnement selon les sources :
+
+*   **Substitution par la distribution empirique :** Le principe de base est de remplacer la distribution de probabilité inconnue ($F$) par la **distribution empirique ($\hat{F}$)** de l'échantillon initial. Cette méthode s'appuie sur le fait que la distribution empirique converge vers la distribution réelle à mesure que la taille de l'échantillon ($n$) augmente.
+*   **Ré-échantillonnage avec remise :** Techniquement, on génère des « échantillons bootstrap » (ou répliques) de taille $n$ en effectuant des **tirages aléatoires avec remise** parmi les observations initiales. 
+*   **Répétition massive :** Ce processus est répété un grand nombre de fois (noté $B$, souvent **1 000 ou 10 000 fois**) pour obtenir une distribution empirique de la statistique d'intérêt (moyenne, médiane, variance, etc.).
+*   **Objectifs et utilité :** Cette technique permet d'obtenir des **estimations du biais**, de la **variance** et de construire des **intervalles de confiance** sans avoir à formuler d'hypothèses probabilistes restrictives, comme la normalité des données.
+
+**Avantages et limites :**
+Le bootstrap est particulièrement précieux pour analyser des statistiques non linéaires (comme la médiane) pour lesquelles la théorie classique est complexe. Toutefois, il présente des limites si l'échantillon initial est de **taille trop faible** ou si les données présentent une **non-indépendance** (comme dans les séries chronologiques).
+
+Pour simplifier, si l'on compare un échantillon à un jeu de cartes, le **bootstrap** reviendrait à créer de nouveaux paquets en pigeant une carte, en notant sa valeur, puis en la remettant dans le paquet avant de piger la suivante, afin de simuler une infinité de parties possibles à partir du même jeu initial.
+
